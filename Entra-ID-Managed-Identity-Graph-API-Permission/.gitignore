@@ -1,11 +1,23 @@
-# Terraform ignore
-*.tfstate
-*.tfstate.backup
+# Local Terraform files
+# These files are created locally when you run `terraform init` and `terraform plan`.
+# They should not be committed to version control.
 .terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
-# Powershell ignore
-*.ps1xml
+# Ignore sensitive variable files
+*.tfvars
+*.tfvars.json
 
-# Shell script ignore
-*.sh~
-*.swp
+# IDE and OS-specific files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

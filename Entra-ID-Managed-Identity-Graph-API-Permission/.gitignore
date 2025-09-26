@@ -1,0 +1,11 @@
+# Terraform ignore
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Powershell ignore
+*.ps1xml
+
+# Shell script ignore
+*.sh~
+*.swp

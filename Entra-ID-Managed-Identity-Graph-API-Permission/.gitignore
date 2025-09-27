@@ -21,3 +21,6 @@ override.tf.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Ignore csv file
+*.csv

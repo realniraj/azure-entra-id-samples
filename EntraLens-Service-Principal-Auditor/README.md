@@ -1,6 +1,6 @@
 # 🛡️ EntraLens: Service Principal Auditor
 
-Project EntraLens is a comprehensive PowerShell script designed to provide deep visibility into the security posture of a Microsoft Entra ID tenant. By leveraging the Microsoft Graph API, the script inventories every Service Principal—including applications, managed identities, and legacy workloads—and gathers critical data points that are often difficult to correlate manually. This includes assigned permissions, credential types and their expiration dates, ownership details, and, most importantly, the last sign-in activity. The final output is a single, detailed CSV report, enabling security administrators and IT governance teams to easily audit for stale credentials, excessive permissions, and abandoned identities, thereby strengthening the overall security of their cloud environment.
+Project EntraLens provides comprehensive scripts (PowerShell and Bash) designed to give you deep visibility into the security posture of a Microsoft Entra ID tenant. By leveraging the Microsoft Graph API or Azure CLI, the scripts inventory every Service Principal—including applications, managed identities, and legacy workloads—and gather critical data points that are often difficult to correlate manually. This includes assigned permissions, credential types and their expiration dates, ownership details, and, most importantly, the last sign-in activity. The final output is a single, detailed CSV report, enabling security administrators and IT governance teams to easily audit for stale credentials, excessive permissions, and abandoned identities, thereby strengthening the overall security of their cloud environment.
 
 ## ✨ Key Features
 
@@ -52,27 +52,52 @@ A **Service Principal** is an *identity* for a non-human actor, like an applicat
 > **Why This Matters for Auditing**
 > The `EntraLens` script inventories all these types, allowing you to identify which identities exist, what they have access to, and whether they are still in use. An unused service principal with high privileges is a significant security risk, and this report is your primary tool for finding and mitigating that risk.
 
-## � How to Use
+## 💻 How to Use
 
 ### 1. Prerequisites
 
-You need the **Microsoft Graph PowerShell SDK**. If you don't have it, open PowerShell as an administrator and run:
-```powershell
-Install-Module Microsoft.Graph -Scope AllUsers
-```
+Depending on which script you choose to run, you will need the following tools installed:
+
+*   **For the PowerShell version (`/ps`):**
+    *   The **Microsoft Graph PowerShell SDK**. If you don't have it, open PowerShell as an administrator and run:
+        ```powershell
+        Install-Module Microsoft.Graph -Scope AllUsers
+        ```
+
+*   **For the Bash version (`/sh`):**
+    *   **Azure CLI**: The command-line tool for interacting with Azure.
+    *   **jq**: A lightweight and flexible command-line JSON processor.
 
 ### 2. Run the Script
 
-1.  Save the `Get-EntraServicePrincipalReport_Enhanced.ps1` script to your computer.
-2.  Open a PowerShell terminal and navigate to the directory where you saved the file.
-3.  Execute the script:
+Choose the script that matches your environment.
+
+#### Using PowerShell
+
+1.  Open a PowerShell terminal.
+2.  Navigate to the `ps` directory.
+3.  Execute the script. It will prompt you to log in.
     ```powershell
+    cd ps
     .\Get-EntraServicePrincipalReport_Enhanced.ps1
+    ```
+
+#### Using Bash
+
+1.  Open a Bash terminal (like Git Bash, WSL, or a standard Linux/macOS terminal).
+2.  Log in to Azure using the Azure CLI. The script requires permissions to the Microsoft Graph API.
+    ```bash
+    az login --scope https://graph.microsoft.com/.default
+    ```
+3.  Navigate to the `sh` directory and execute the script.
+    ```bash
+    cd sh
+    ./Get-EntraServicePrincipalReport_Enhanced.sh
     ```
 
 ### 3. Permissions
 
-The script will prompt you to log in and consent to the required permissions. A user with at least the **Cloud Application Administrator** role is recommended.
+To gather all the required information, the user or identity running the script needs sufficient permissions in Microsoft Entra ID. A user with at least the **Cloud Application Administrator** role is recommended.
 
 > **✅ Required Permissions:**
 > The script will request the following Microsoft Graph permissions:

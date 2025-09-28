@@ -94,14 +94,11 @@ echo "$ALL_SPS" | jq -c '.[]' | while IFS= read -r sp; do
             fi
 
             # Get Owners
-            OWNER_IDS=$(echo "$APP_OBJECT" | jq -r '.owners[].objectId | select(. != null)')
+            OWNER_IDS=$(echo "$APP_OBJECT" | jq -r 'if .owners then .owners[].objectId | select(. != null) else "" end')
             if [[ ! -z "$OWNER_IDS" ]]; then
                 OWNER_UPNS=()
                 for owner_id in $OWNER_IDS; do
-                    # Use 'az ad user show' or 'az ad sp show' to get UPN/DisplayName
-                    # This is an expensive operation, so we'll use a placeholder for this example script.
-                    # For a full implementation, you would query each owner ID.
-                    # For simplicity, we'll just list the IDs. A more advanced script would resolve them.
+                    # For simplicity, we'll just list the IDs. A more advanced script would resolve them to UPNs.
                     OWNER_UPNS+=("id:$owner_id")
                 done
                 OWNERS_FORMATTED=$(IFS='; '; echo "${OWNER_UPNS[*]}")
@@ -127,11 +124,11 @@ echo "$ALL_SPS" | jq -c '.[]' | while IFS= read -r sp; do
     CERT_EXPIRIES=$(echo "$sp" | jq -r 'if .keyCredentials and (.keyCredentials | length > 0) then [.keyCredentials[].endDateTime | .[0:10]] | join("; ") else "None" end')
 
     # --- Gather API Permissions (OAuth2 Grants) ---
-    API_PERMS_JSON=$(az rest --method GET --url "https://graph.microsoft.com/v1.0/servicePrincipals/${OBJECT_ID}/oauth2PermissionGrants" --header "Content-Type=application/json" 2>/dev/null || echo '{"value":[]}')
+    API_PERMS_JSON=$(az rest --method GET --url "https://graph.microsoft.com/v1.0/servicePrincipals/${OBJECT_ID}/oauth2PermissionGrants" --header "Content-Type=application/json" 2>/dev/null || echo '{}')
     API_PERMS_FORMATTED=$(echo "$API_PERMS_JSON" | jq -r 'if .value and (.value | length > 0) then [.value[] | "Resource: \(.resourceId) | Scope: \(.scope)"] | join("; ") else "None" end')
 
     # --- Gather App Role Assignments ---
-    APP_ROLES_JSON=$(az rest --method GET --url "https://graph.microsoft.com/v1.0/servicePrincipals/${OBJECT_ID}/appRoleAssignments" --header "Content-Type=application/json" 2>/dev/null || echo '{"value":[]}')
+    APP_ROLES_JSON=$(az rest --method GET --url "https://graph.microsoft.com/v1.0/servicePrincipals/${OBJECT_ID}/appRoleAssignments" --header "Content-Type=application/json" 2>/dev/null || echo '{}')
     APP_ROLES_FORMATTED=$(echo "$APP_ROLES_JSON" | jq -r 'if .value and (.value | length > 0) then [.value[] | "RoleId: \(.appRoleId) on Resource: \(.resourceDisplayName // .resourceId)"] | join("; ") else "None" end')
 
     # --- Sanitize for CSV ---

@@ -31,7 +31,8 @@
  The `sh/` and `ps/` directories contain scripts to `imperatively` create the resources and assign permissions.
  
  *   **Creation Scripts**: `sh/createUserAssignedManagedIdentiy.sh` and `ps/createUserAssignedManagedIdentiy.ps1` create the resource group and the managed identity.
- *   **Permission Scripts**: `sh/assignPermissionsToManagedIdentities.sh` and `ps/assignPermissionsToManagedIdentities.ps1` grant the Graph API permissions to the identity.
+ *   **Grant Permission Scripts**: `ps/Grant-GraphPermissionsToManagedIdentity.ps1` grants the Graph API permissions to the identity.
+ *   **Remove Permission Scripts**: `sh/removePermissionsFromManagedIdentities.sh` and `ps/removePermissionsFromManagedIdentities.ps1` remove the Graph API permissions from the identity.
  
  #### How the Permission Script Works
  
@@ -96,13 +97,21 @@
          ```
  
  2.  **Assign Permissions**: Run the corresponding script to assign permissions.
+     *   **PowerShell:**
+         ```powershell
+         # This grants User.Read.All and Group.Read.All
+         ./ps/Grant-GraphPermissionsToManagedIdentity.ps1 -ManagedIdentityName "my-demo-identity"
+         ```
+ 
+ 3.  **(Optional) Remove Permissions**: To revoke the permissions, run the removal script.
      *   **Bash:**
          ```bash
-         ./sh/assignPermissionsToManagedIdentities.sh
+         # Note: You may need to edit the script to set the MANAGED_IDENTITY_NAME variable
+         ./sh/removePermissionsFromManagedIdentities.sh
          ```
      *   **PowerShell:**
          ```powershell
-         ./ps/assignPermissionsToManagedIdentities.ps1
+         ./ps/removePermissionsFromManagedIdentities.ps1 -ManagedIdentityName "my-demo-identity"
          ```
  
  ### Using Terraform
@@ -126,10 +135,17 @@
  
  ### Script Cleanup
  
- To remove the resources created by the scripts, delete the resource group.
- ```sh
- az group delete --name my-managed-identity-rg --yes --no-wait
- ```
+ To remove the resources created by the scripts, you can delete the resource group.
+ 
+ *   **Using Bash / Azure CLI:**
+     ```sh
+     az group delete --name my-managed-identity-rg --yes --no-wait
+     ```
+ *   **Using PowerShell:**
+     ```powershell
+     # This requires the Az PowerShell module (Install-Module Az)
+     Remove-AzResourceGroup -Name "my-managed-identity-rg" -Force
+     ```
  
  ### Terraform Cleanup
  

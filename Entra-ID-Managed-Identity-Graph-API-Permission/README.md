@@ -97,21 +97,26 @@
          ```
  
  2.  **Assign Permissions**: Run the corresponding script to assign permissions.
+     *   **Bash:**
+         ```bash
+         # Note: This script uses the hardcoded identity name 'mySampleWebAppIdentity'
+         ./sh/assignPermissionsToManagedIdentities.sh
+         ```
      *   **PowerShell:**
          ```powershell
          # This grants User.Read.All and Group.Read.All
-         ./ps/Grant-GraphPermissionsToManagedIdentity.ps1 -ManagedIdentityName "my-demo-identity"
+         ./ps/Grant-GraphPermissionsToManagedIdentity.ps1 -ManagedIdentityName "mySampleWebAppIdentity"
          ```
  
  3.  **(Optional) Remove Permissions**: To revoke the permissions, run the removal script.
      *   **Bash:**
          ```bash
-         # Note: You may need to edit the script to set the MANAGED_IDENTITY_NAME variable
+         # Note: You may need to edit the script to set the identity name variable
          ./sh/removePermissionsFromManagedIdentities.sh
          ```
      *   **PowerShell:**
          ```powershell
-         ./ps/removePermissionsFromManagedIdentities.ps1 -ManagedIdentityName "my-demo-identity"
+         ./ps/removePermissionsFromManagedIdentities.ps1 -ManagedIdentityName "mySampleWebAppIdentity"
          ```
  
  ### Using Terraform

@@ -6,10 +6,11 @@ This sample provides PowerShell scripts to automate the creation of an Azure Dat
 
 This solution enables an Azure Data Factory to securely authenticate to Microsoft Graph using its own managed identity, eliminating the need for storing secrets or credentials. This is the recommended best practice for Azure services that need to interact with APIs like Microsoft Graph.
 
-The sample includes two primary scripts:
+The sample includes three primary scripts:
 
 1.  **`New-AzureDataFactory.ps1`**: Creates a new Azure Data Factory and its corresponding resource group if it doesn't already exist.
 2.  **`Grant-GraphPermissionsToAzureDataFactory.ps1`**: Grants the `Sites.Selected` application permission to the ADF's system-assigned managed identity.
+3.  **`Grant-AdfSharePointSiteAccess.ps1`**: Grants the ADF's managed identity access to specific SharePoint Online sites.
 
 ## Prerequisites
 
@@ -17,7 +18,7 @@ Before you begin, ensure you have the following:
 
 *   An active **Azure Subscription**.
 *   **PowerShell 7.x** or later.
-*   The following PowerShell modules installed:
+*   The following PowerShell modules:
     *   **Azure Az Module**: `Install-Module Az -Scope CurrentUser`
     *   **Microsoft Graph Module**: `Install-Module Microsoft.Graph -Scope CurrentUser`
 *   Sufficient permissions in your Microsoft Entra ID tenant to grant application permissions (e.g., a user with the **Cloud Application Administrator** or **Application Administrator** role).
@@ -58,7 +59,7 @@ Open a PowerShell terminal and connect to both Azure (for resource management) a
 Connect-AzAccount
 
 # Connect to Microsoft Graph with the required permission scopes
-Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All", "Application.Read.All"
+Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All", "Application.Read.All", "Sites.FullControl.All"
 ```
 
 ### Step 2: Create the Azure Data Factory
@@ -88,30 +89,14 @@ The script will find the ADF's managed identity and assign the `Sites.Selected` 
 
 The `Sites.Selected` permission gives your ADF the *ability* to be granted access, but it doesn't have access to any sites yet. You must now explicitly grant access to each SharePoint site you want the ADF to read from.
 
-This is done via a Microsoft Graph API call. Here is a sample PowerShell command to grant "read" access to a specific site:
+The `Grant-AdfSharePointSiteAccess.ps1` script automates this process.
 
 ```powershell
-# 1. Find your ADF's Service Principal
-$adfSp = Get-MgServicePrincipal -Filter "displayName eq 'my-company-adf-001'"
+# Grant 'read' access to the ADF for a specific site
+.\Grant-AdfSharePointSiteAccess.ps1 -DataFactoryName "my-company-adf-001" -SiteUrl "https://yourtenant.sharepoint.com/sites/Marketing"
 
-# 2. Find your SharePoint Site (replace 'My-Site' and 'mytenant.sharepoint.com' with your details)
-$site = Get-MgSite -SiteId "mytenant.sharepoint.com:/sites/My-Site"
-
-# 3. Prepare the permission grant
-$params = @{
-    roles = @("read") # Or "write"
-    grantedToIdentities = @(
-        @{
-            application = @{
-                id = $adfSp.AppId
-                displayName = $adfSp.DisplayName
-            }
-        }
-    )
-}
-
-# 4. Grant the permission to the site
-New-MgSitePermission -SiteId $site.Id -BodyParameter $params
+# You can also grant 'write' access
+.\Grant-AdfSharePointSiteAccess.ps1 -DataFactoryName "my-company-adf-001" -SiteUrl "https://yourtenant.sharepoint.com/sites/DataStaging" -Permissions "write"
 ```
 
 After completing this final step, your Azure Data Factory can now authenticate to Microsoft Graph and read data from the specified SharePoint site.

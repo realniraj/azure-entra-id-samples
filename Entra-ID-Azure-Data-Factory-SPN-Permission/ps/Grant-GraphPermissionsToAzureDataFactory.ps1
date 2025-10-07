@@ -30,39 +30,42 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true, HelpMessage = "The display name of the Azure Data Factory.")]
-    [string]$DataFactoryName
+    [string]$DataFactoryName,
+
+    [Parameter(Mandatory = $false, HelpMessage = "The Graph API application permissions to grant.")]
+    [string[]]$Permission = @("Sites.Selected")
 )
 
 begin {
-    # --- Step 1: Connect to Microsoft Graph ---
-    Write-Verbose "Connecting to Microsoft Graph..."
     try {
-        # Scopes required for the script to read service principals and create app role assignments
-        $requiredScopes = @("AppRoleAssignment.ReadWrite.All", "Application.Read.All")
-        Connect-MgGraph -Scopes $requiredScopes -ErrorAction Stop
+        # --- Step 1: Connect to Microsoft Graph if not already connected ---
+        Write-Verbose "Checking for existing Microsoft Graph connection..."
+        if (-not (Get-MgContext)) {
+            Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Yellow
+            # Scopes required for the script to read service principals and create app role assignments
+            $requiredScopes = @("AppRoleAssignment.ReadWrite.All", "Application.Read.All")
+            Connect-MgGraph -Scopes $requiredScopes -ErrorAction Stop
+            $script:DisconnectedInEndBlock = $true
+        }
         Write-Verbose "Successfully connected to Microsoft Graph."
-    }
-    catch {
-        Write-Error "Failed to connect to Microsoft Graph. Please ensure you have the module installed and can authenticate. Error: $_"
-        # Stop the script if connection fails
-        return
-    }
 
-    # --- Step 2: Find the necessary Service Principals ---
-    $dataFactorySp = $null
-    $graphSp = $null
-    try {
+        # --- Step 2: Find the necessary Service Principals ---
         Write-Verbose "Finding the service principal for the Azure Data Factory: '$DataFactoryName'"
-        $dataFactorySp = Get-MgServicePrincipal -Filter "displayName eq '$DataFactoryName'" -ErrorAction Stop
-        if (-not $dataFactorySp) {
+        $dataFactorySps = Get-MgServicePrincipal -Filter "displayName eq '$DataFactoryName'" -ErrorAction Stop
+        if (-not $dataFactorySps) {
             throw "Azure Data Factory '$DataFactoryName' could not be found as a service principal in Microsoft Entra ID."
         }
-        Write-Verbose "Found Azure Data Factory Service Principal with ID: $($dataFactorySp.Id)"
+        if ($dataFactorySps.Count -gt 1) {
+            throw "Found multiple service principals with display name '$DataFactoryName'. Please provide a more specific identifier."
+        }
+        $script:dataFactorySp = $dataFactorySps
+        Write-Verbose "Found Azure Data Factory Service Principal with ID: $($script:dataFactorySp.Id)"
 
         Write-Verbose "Finding the service principal for Microsoft Graph API..."
+        # Scopes required for the script to read service principals and create app role assignments
         # The App ID for Microsoft Graph is a well-known, constant value
-        $graphSp = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'" -ErrorAction Stop
-        Write-Verbose "Found Microsoft Graph Service Principal with ID: $($graphSp.Id)"
+        $script:graphSp = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'" -ErrorAction Stop
+        Write-Verbose "Found Microsoft Graph Service Principal with ID: $($script:graphSp.Id)"
     }
     catch {
         Write-Error "An error occurred while finding the service principals. Error: $_"
@@ -72,11 +75,7 @@ begin {
 
 process {
     # --- Step 3: Define and Assign App Roles ---
-    $permissionsToGrant = @(
-        "Sites.Selected"
-    )
-
-    foreach ($permission in $permissionsToGrant) {
+    foreach ($perm in $Permission) {
         Write-Host "`nProcessing permission: '$permission'..." -ForegroundColor Cyan
 
         # Find the specific App Role on the Microsoft Graph service principal
@@ -117,8 +116,10 @@ process {
 }
 
 end {
-    Write-Verbose "Script finished. Disconnecting from Microsoft Graph."
-    Disconnect-MgGraph
+    if ($script:DisconnectedInEndBlock) {
+        Write-Verbose "Script finished. Disconnecting from Microsoft Graph."
+        Disconnect-MgGraph
+    }
 }
 
 <#

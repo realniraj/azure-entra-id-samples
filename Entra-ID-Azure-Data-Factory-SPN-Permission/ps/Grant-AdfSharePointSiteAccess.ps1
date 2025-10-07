@@ -50,13 +50,17 @@ param(
 )
 
 begin {
-    # --- Step 1: Connect to Microsoft Graph ---
-    Write-Verbose "Connecting to Microsoft Graph..."
     try {
-        # Scopes required to find service principals and manage site permissions.
-        # Sites.FullControl.All is a high-privilege scope required to grant permissions to other applications.
-        $requiredScopes = @("Sites.FullControl.All", "Application.Read.All")
-        Connect-MgGraph -Scopes $requiredScopes -ErrorAction Stop
+        # --- Step 1: Connect to Microsoft Graph if not already connected ---
+        Write-Verbose "Checking for existing Microsoft Graph connection..."
+        if (-not (Get-MgContext)) {
+            Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Yellow
+            # Scopes required to find service principals and manage site permissions.
+            # Sites.FullControl.All is a high-privilege scope required to grant permissions to other applications.
+            $requiredScopes = @("Sites.FullControl.All", "Application.Read.All")
+            Connect-MgGraph -Scopes $requiredScopes -ErrorAction Stop
+            $script:DisconnectedInEndBlock = $true
+        }
         Write-Verbose "Successfully connected to Microsoft Graph."
     }
     catch {
@@ -67,12 +71,18 @@ begin {
 
 process {
     try {
+        # Scopes required to find service principals and manage site permissions.
+        # Sites.FullControl.All is a high-privilege scope required to grant permissions to other applications.
         # --- Step 2: Find the ADF Service Principal ---
         Write-Verbose "Finding the service principal for Azure Data Factory: '$DataFactoryName'"
-        $adfSp = Get-MgServicePrincipal -Filter "displayName eq '$DataFactoryName'" -ErrorAction Stop
-        if (-not $adfSp) {
+        $adfSps = Get-MgServicePrincipal -Filter "displayName eq '$DataFactoryName'" -ErrorAction Stop
+        if (-not $adfSps) {
             throw "Azure Data Factory '$DataFactoryName' could not be found as a service principal in Microsoft Entra ID."
         }
+        if ($adfSps.Count -gt 1) {
+            throw "Found multiple service principals with display name '$DataFactoryName'. Please provide a more specific identifier."
+        }
+        $adfSp = $adfSps
         Write-Host "Found ADF Service Principal. ID: $($adfSp.Id), AppId: $($adfSp.AppId)" -ForegroundColor Green
 
         # --- Step 3: Find the SharePoint Site ---
@@ -88,11 +98,11 @@ process {
 
         # --- Step 4: Check for Existing Permissions ---
         Write-Verbose "Checking for existing permissions on the site for '$DataFactoryName'..."
-        $existingPermissions = Get-MgSitePermission -SiteId $site.Id
-        $appHasPermission = $existingPermissions.GrantedToIdentities | ForEach-Object { $_.Application.Id -eq $adfSp.AppId }
+        # Use a server-side filter to check for the specific application's permissions
+        $existingPermission = Get-MgSitePermission -SiteId $site.Id -ExpandProperty "grantedToIdentities" | Where-Object { $_.GrantedToIdentities.Application.Id -eq $adfSp.AppId }
 
-        if ($appHasPermission) {
-            Write-Host "The application '$DataFactoryName' already has permissions on this site. No action needed." -ForegroundColor Yellow
+        if ($existingPermission) {
+            Write-Host "The application '$DataFactoryName' already has permissions on this site (Roles: $($existingPermission.Roles -join ', ')). No action needed." -ForegroundColor Yellow
             return
         }
 
@@ -122,6 +132,8 @@ process {
 }
 
 end {
-    Write-Verbose "Script finished. Disconnecting from Microsoft Graph."
-    Disconnect-MgGraph
+    if ($script:DisconnectedInEndBlock) {
+        Write-Verbose "Script finished. Disconnecting from Microsoft Graph."
+        Disconnect-MgGraph
+    }
 }

@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # --- 1. Configuration: Set your target environment variables ---
-TENANT_ID="89623cf5-82bf-46d4-9145-1f14a9b4ad0f"
-SUBSCRIPTION_ID="1c558941-67be-4a58-848f-2fcef3c5acf3"
-DATA_FACTORY_NAME="my-unique-adf"
+TENANT_ID="<replace-with-your-tenant-id>" # replace with your Azure AD tenant ID
+SUBSCRIPTION_ID="<replace-with-your-subscription-id>" # replace with your Azure subscription ID
+DATA_FACTORY_NAME="<replace-with-your-adf-name>" # replace with your ADF name
 
 # --- 2. Authentication and Setup ---
 echo "Checking Azure login status..."

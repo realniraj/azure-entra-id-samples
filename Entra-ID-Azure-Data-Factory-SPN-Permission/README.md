@@ -46,57 +46,100 @@ To grant an ADF's managed identity permissions to call the Microsoft Graph API, 
 
 These scripts handle this complexity, providing a reliable and repeatable way to configure the necessary API permissions that cannot be done through the Azure Portal's user interface.
 
-## How to Use
+## How to Use the Sample
 
-Follow these steps to create an ADF and grant it permissions to access SharePoint.
+Choose one of the three methods below to provision the resources.
 
-### Step 1: Connect to Azure and Microsoft Graph
+### Method 1: Using PowerShell Scripts (`/ps`)
 
-Open a PowerShell terminal and connect to both Azure (for resource management) and Microsoft Graph (for permission management). You will be prompted to sign in for each.
+This method provides a step-by-step approach using individual PowerShell scripts.
 
-```powershell
-# Connect to your Azure subscription
-Connect-AzAccount
+1.  **Connect to Azure and Microsoft Graph**:
+    Open a PowerShell terminal and run the generalized login script. This will handle both connections with a single sign-in.
+    ```powershell
+    # From the root of the repository
+    .\Login-MicrosoftGaphApi.ps1 -TenantId "your-tenant-id" -SubscriptionId "your-subscription-id"
+    ```
 
-# Connect to Microsoft Graph with the required permission scopes
-Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All", "Application.Read.All", "Sites.FullControl.All"
-```
+2.  **Create the Azure Data Factory**:
+    Run the `New-AzureDataFactory.ps1` script to provision the ADF with a system-assigned managed identity.
+    ```powershell
+    # Navigate to the ps directory
+    cd ".\Entra-ID-Azure-Data-Factory-SPN-Permission\ps"
 
-### Step 2: Create the Azure Data Factory
+    .\New-AzureDataFactory.ps1 -DataFactoryName "my-company-adf-001" -ResourceGroupName "adf-sp-rg" -Location "EastUS"
+    ```
 
-Run the `New-AzureDataFactory.ps1` script to provision the ADF. Provide a globally unique name for the Data Factory, a resource group name, and a location.
+3.  **Grant `Sites.Selected` Permission**:
+    Run the `Grant-GraphPermissionsToAzureDataFactory.ps1` script, providing the name of the ADF you just created.
+    ```powershell
+    .\Grant-GraphPermissionsToAzureDataFactory.ps1 -DataFactoryName "my-company-adf-001"
+    ```
 
-```powershell
-# Navigate to the ps directory
-cd "c:\Code Repo\azure-entra-id-samples\Entra-ID-Azure-Data-Factory-SPN-Permission\ps"
+### Method 2: Using Shell Scripts (`/sh`)
 
-.\New-AzureDataFactory.ps1 -DataFactoryName "my-company-adf-001" -ResourceGroupName "adf-sp-rg" -Location "EastUS"
-```
+This method uses Bash and the Azure CLI.
 
-This will create the resource group (if needed) and the ADF. A managed identity is automatically created for the ADF.
+1.  **Log in to Azure**:
+    Open a terminal and log in to your Azure account.
+    ```sh
+    az login --tenant "your-tenant-id"
+    ```
 
-### Step 3: Grant `Sites.Selected` Permission
+2.  **Create the Azure Data Factory**:
+    Run the `New-AzureDataFactory.sh` script.
+    ```sh
+    # Navigate to the sh directory
+    cd "Entra-ID-Azure-Data-Factory-SPN-Permission/sh"
 
-Now, run the `Grant-GraphPermissionsToAzureDataFactory.ps1` script, providing the name of the ADF you just created.
+    ./New-AzureDataFactory.sh --data-factory-name "my-company-adf-001" --resource-group-name "adf-sp-rg" --location "EastUS"
+    ```
 
-```powershell
-.\Grant-GraphPermissionsToAzureDataFactory.ps1 -DataFactoryName "my-company-adf-001"
-```
+3.  **Grant `Sites.Selected` Permission**:
+    Edit the `Grant-GraphPermissionsToAzureDataFactory.sh` script to set your `TENANT_ID`, `SUBSCRIPTION_ID`, and `DATA_FACTORY_NAME`, then run it.
+    ```sh
+    ./Grant-GraphPermissionsToAzureDataFactory.sh
+    ```
 
-The script will find the ADF's managed identity and assign the `Sites.Selected` permission from Microsoft Graph to it.
+### Method 3: Using Terraform (`/tf`)
 
-### Step 4: Grant Access to Specific SharePoint Sites (Crucial Next Step)
+This declarative method creates and configures all resources in one operation.
+
+1.  **Log in to Azure**:
+    Open a terminal and log in to your Azure account.
+    ```sh
+    az login --tenant "your-tenant-id"
+    ```
+
+2.  **Initialize Terraform**:
+    Navigate to the `/tf` directory and run `terraform init`.
+    ```sh
+    cd "Entra-ID-Azure-Data-Factory-SPN-Permission/tf"
+    terraform init
+    ```
+
+3.  **Deploy the Resources**:
+    Run `terraform apply`. You can override the default variable values if needed.
+    ```sh
+    terraform apply -var="data_factory_name=my-company-adf-001"
+    ```
+    Terraform will create the resource group, the Data Factory, and assign the `Sites.Selected` permission.
+
+## Crucial Next Step: Grant Access to Specific SharePoint Sites
 
 The `Sites.Selected` permission gives your ADF the *ability* to be granted access, but it doesn't have access to any sites yet. You must now explicitly grant access to each SharePoint site you want the ADF to read from.
 
 The `Grant-AdfSharePointSiteAccess.ps1` script automates this process.
 
 ```powershell
+# Ensure you are connected to Graph with the correct permissions
+# Connect-MgGraph -Scopes "Sites.FullControl.All", "Application.Read.All"
+
 # Grant 'read' access to the ADF for a specific site
-.\Grant-AdfSharePointSiteAccess.ps1 -DataFactoryName "my-company-adf-001" -SiteUrl "https://yourtenant.sharepoint.com/sites/Marketing"
+.\ps\Grant-AdfSharePointSiteAccess.ps1 -DataFactoryName "my-company-adf-001" -SiteUrl "https://yourtenant.sharepoint.com/sites/Marketing"
 
 # You can also grant 'write' access
-.\Grant-AdfSharePointSiteAccess.ps1 -DataFactoryName "my-company-adf-001" -SiteUrl "https://yourtenant.sharepoint.com/sites/DataStaging" -Permissions "write"
+.\ps\Grant-AdfSharePointSiteAccess.ps1 -DataFactoryName "my-company-adf-001" -SiteUrl "https://yourtenant.sharepoint.com/sites/DataStaging" -Permissions "write"
 ```
 
 After completing this final step, your Azure Data Factory can now authenticate to Microsoft Graph and read data from the specified SharePoint site.
